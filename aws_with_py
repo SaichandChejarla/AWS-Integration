@@ -48,7 +48,7 @@ class main_class():
             ImageId = 'ami-00fc224d9834053d6',
             TagSpecifications = tag_Specifications, 
             InstanceType = 't2.micro',
-            KeyName = 'sshpair',
+            KeyName = 'CA',
             MinCount = 1,
             MaxCount = count,
             NetworkInterfaces=[{'DeviceIndex': 0,'Groups': [sec_id], 'SubnetId': str(subnet_id), 'DeleteOnTermination': True, 'AssociatePublicIpAddress': True}]

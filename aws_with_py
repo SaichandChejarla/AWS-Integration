@@ -11,15 +11,38 @@ class main_class():
         self.ec2_conn_create = boto3.resource('ec2')
         self.total_list_assign = []
         self.all_inst_dict_tolist = []
+        self.running_state = []
+        self.stoppped_state = []
+        self.terminated_state = []
 
-    def ec2_list_of_instances(self):
-        ec2_responce = self.ec2_conn_list.describe_instances()  
+    def ec2_list_of_instances(self, sate_check=''):
+        ec2_responce = self.ec2_conn_list.describe_instances()
+        state = []  
         for reservation in ec2_responce["Reservations"]:
             for instance in reservation["Instances"]:
                 each_inst_dict = {}
                 each_inst_dict["State"] = instance["State"]["Name"]
                 each_inst_dict["InstanceId"] = instance["InstanceId"]
                 self.all_inst_dict_tolist.append(each_inst_dict)
+        #print(self.all_inst_dict_tolist)
+        if sate_check == "stopped":
+            for i in self.all_inst_dict_tolist:
+                if i["State"] == "stopped":
+                    self.running_state.append(i)
+            self.all_inst_dict_tolist = self.running_state
+            exit
+        if sate_check == "terminated":
+            for i in self.all_inst_dict_tolist:
+                if i["State"] == "terminated":
+                    self.stoppped_state.append(i)
+            self.all_inst_dict_tolist = self.stoppped_state
+            exit
+        if sate_check == "running":
+            for i in self.all_inst_dict_tolist:
+                if i["State"] == "running":
+                    self.terminated_state.append(i)
+            self.all_inst_dict_tolist = self.terminated_state
+            exit
 
     def table_format(self):
         try:
@@ -63,10 +86,9 @@ class main_class():
                     sec_id = groups["GroupId"]
                     #print("The security group **" +  groups["GroupName"] + "** which you are trying to create is already there with ID:- "+ groups["GroupId"])
                     return "Found",sec_id
-                else:
-                    raise Exception
-        except Exception:
-            print("No default VPC or VPC's configured")
+            return "NotFound", "NotFound"
+        except ValueError:
+            print("VPC or the Security group issue")
 
     def get_subnetid(self):
         check_sec_group = self.ec2_conn_list.describe_security_groups()
@@ -131,23 +153,26 @@ class main_class():
         
     def range_mapper(self, range_vales):
         range_list = []
-        case_range = range_vales.split(",")
         try:
-            for r in case_range:
-                range_dict = {}
-                range_start_end = r.split("-")
-                if "" in range_start_end:
-                    raise Exception  # this can occur if unncessary hypens/commas present in range values
-                if len(range_start_end) == 1:
-                    range_dict["start"] = range_start_end[0]
-                    range_dict["end"] = range_start_end[0]
-                    range_list.append(range_dict)
-                elif len(range_start_end) == 2:
-                    range_dict["start"] = range_start_end[0]
-                    range_dict["end"] = range_start_end[1]
-                    range_list.append(range_dict)         
-            InstanceIds = [self.all_inst_dict_tolist[rownumber]["InstanceId"]
-                                    for r in range_list for rownumber in range(int(r["start"]) - 1, int(r["end"]))]
+            if range_vales in ("all","stopall","termall","startall"):
+                InstanceIds = [i["InstanceId"] for i in self.all_inst_dict_tolist]
+            else:
+                case_range = range_vales.split(",")
+                for r in case_range:
+                    range_dict = {}
+                    range_start_end = r.split("-")
+                    if "" in range_start_end:
+                        raise Exception  # this can occur if unncessary hypens/commas present in range values
+                    if len(range_start_end) == 1:
+                        range_dict["start"] = range_start_end[0]
+                        range_dict["end"] = range_start_end[0]
+                        range_list.append(range_dict)
+                    elif len(range_start_end) == 2:
+                        range_dict["start"] = range_start_end[0]
+                        range_dict["end"] = range_start_end[1]
+                        range_list.append(range_dict)         
+                InstanceIds = [self.all_inst_dict_tolist[rownumber]["InstanceId"]
+                                        for r in range_list for rownumber in range(int(r["start"]) - 1, int(r["end"]))]
             print("These are the Instances which are effected with above action")
             for i in InstanceIds:
                 print(i)
@@ -210,19 +235,18 @@ class SimpleTable():
 if __name__ == "__main__":
     parser = ArgumentParser(description="""To check the Instances details of AWS account""",
                             usage='%(prog)s --list(list of instances) --stop(to stop instances) --term(to terminate instances) --start(to start instances)',
-                            epilog='python verify_hosts.py --list(or) --start')
-    parser.add_argument("--list", dest="list", help="List instances")
+                            epilog='python automation_of_aws_with_python.py --list(or) --start')
+    parser.add_argument("--list", dest="list", action="store_true", help="List instances")
     parser.add_argument("--stop", help="Stop instances")
     parser.add_argument("--start",help="Start instances")
     parser.add_argument("--term", help="Terminate Instances")
-    parser.add_argument("--create", help="Creating imstances")
-    parser.add_argument("--running", help="Creating imstances")
-    parser.add_argument("--stopped", help="Creating imstances")
-    parser.add_argument("--terminated", help="Creating imstances")
-
+    parser.add_argument("--create", help="Creating instances")
+    parser.add_argument("--running",dest="running", action="store_true", help="Only Running imstances")
+    parser.add_argument("--stopped",dest="stopped", action="store_true", help="Only Stopped imstances")
+    parser.add_argument("--terminated",dest="terminated", action="store_true", help="Creating imstances")
     args = parser.parse_args()
     Mainobj = main_class()
-    if len(sys.argv)<2 or args.list in ("all",""):
+    if len(sys.argv)<2 or args.list in ("all",True):
         Mainobj.ec2_list_of_instances()
         Mainobj.table_format()
 
@@ -249,3 +273,35 @@ if __name__ == "__main__":
 
     if args.create:
         Mainobj.create_sec_grp(args.create)
+
+    if args.running:
+        Mainobj.ec2_list_of_instances("running")
+        Mainobj.table_format()
+        
+    if args.running in ("stopall","termall"):
+        Mainobj.ec2_list_of_instances("running")
+        list_option_filter = Mainobj.range_mapper(args.running)
+        confirm = Mainobj.confirmation()
+        if confirm in ["Y","y"]:
+            if args.running == "stopall":
+                Mainobj.stop_instance(list_option_filter)
+            elif args.running == "termall":
+                Mainobj.term_instance(list_option_filter) 
+
+    if args.stopped:
+        Mainobj.ec2_list_of_instances("stopped")
+        Mainobj.table_format()
+
+    if args.stopped in ("startall","termall"):
+        Mainobj.ec2_list_of_instances("stopped")
+        list_option_filter = Mainobj.range_mapper(args.stopped)
+        confirm = Mainobj.confirmation()
+        if confirm in ["Y","y"]:
+            if args.running == "startall":
+                Mainobj.start_instance(list_option_filter)
+            elif args.running == "termall":
+                Mainobj.term_instance(list_option_filter)
+    
+    if args.terminated:
+        Mainobj.ec2_list_of_instances("terminated")
+        Mainobj.table_format()

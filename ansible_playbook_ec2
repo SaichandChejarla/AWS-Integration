@@ -24,7 +24,7 @@
       ec2dict: "{{ lookup('file', '~/out') }}"
     ec2:
       state: stopped
-      region: ap-south-1
+      region: us-west-1
       instance_ids: "{{ ec2dict.instances[0].id}}"
     tags:
      - stop
@@ -33,7 +33,7 @@
       ec2dict: "{{ lookup('file', '~/out') }}"
     ec2:
       state: running
-      region: ap-south-1
+      region: us-west-1
       instance_ids: "{{ ec2dict.instances[0].id}}"
     tags:
      - start
@@ -42,7 +42,7 @@
       ec2dict: "{{ lookup('file', '~/out') }}"
     ec2:
       state: restarted
-      region: ap-south-1
+      region: us-west-1
       instance_ids: "{{ ec2dict.instances[0].id}}"
     tags:
      - restart
@@ -51,7 +51,7 @@
       ec2dict: "{{ lookup('file', '~/out') }}"
     ec2:
       state: absent
-      region: ap-south-1
+      region: us-west-1
       instance_ids: "{{ ec2dict.instances[0].id}}"
     tags:
      - term

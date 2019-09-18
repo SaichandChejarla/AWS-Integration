@@ -1,0 +1,57 @@
+---
+- name: Launch a ec2 instance
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+  - name: create ec2 instance
+    ec2:
+      image: ami-00fc224d9834053d6
+      wait: yes
+      instance_type: t2.micro
+      group_id: sg-2d5add51
+      region: us-west-1
+      count_tag:
+        Name: webserver
+    register: ec2
+    tags:
+     - launch
+  - local_action: copy content="{{ ec2 }}"  dest="~/out"
+    tags:
+     - launch
+  - name: Shutting down instances that were previously launched
+    vars:
+      ec2dict: "{{ lookup('file', '~/out') }}"
+    ec2:
+      state: stopped
+      region: ap-south-1
+      instance_ids: "{{ ec2dict.instances[0].id}}"
+    tags:
+     - stop
+  - name: Starting instances that were previously launched
+    vars:
+      ec2dict: "{{ lookup('file', '~/out') }}"
+    ec2:
+      state: running
+      region: ap-south-1
+      instance_ids: "{{ ec2dict.instances[0].id}}"
+    tags:
+     - start
+  - name: Restarting instances that were previously launched
+    vars:
+      ec2dict: "{{ lookup('file', '~/out') }}"
+    ec2:
+      state: restarted
+      region: ap-south-1
+      instance_ids: "{{ ec2dict.instances[0].id}}"
+    tags:
+     - restart
+  - name: Terminating instances that were previously launched
+    vars:
+      ec2dict: "{{ lookup('file', '~/out') }}"
+    ec2:
+      state: absent
+      region: ap-south-1
+      instance_ids: "{{ ec2dict.instances[0].id}}"
+    tags:
+     - term
